@@ -6,7 +6,7 @@ import { promisify } from "util";
 import * as fs from "fs";
 
 // Setup error logging to help with debugging
-const logError = (message: string, error?: any) => {
+const logError = (message: string, error: unknown) => {
   console.error(`ERROR: ${message}`, error ? error : '');
 
   // Optionally log to a file for persistent debugging
@@ -35,18 +35,18 @@ const server = new McpServer({
 console.error("MCP server created successfully");
 
 // Helper function to execute AppleScript
-async function runAppleScript(script: string): Promise<string> {
+async function runAppleScript(script: string) {
   try {
     const { stdout } = await execPromise(`osascript -e '${script.replace(/'/g, "'\\''")}'`);
     return stdout.trim();
   } catch (error) {
     console.error("AppleScript execution error:", error);
-    throw new Error(`Failed to execute AppleScript: ${(error as Error).message}`);
+    throw new Error(`Failed to execute AppleScript: ${error}`);
   }
 }
 
 // Helper function to properly format messages for WhatsApp
-function formatWhatsAppMessage(message: string): string {
+function formatWhatsAppMessage(message: string) {
   // Replace normal line breaks with AppleScript line breaks
   // This ensures proper line breaking in WhatsApp
   return message
@@ -54,7 +54,7 @@ function formatWhatsAppMessage(message: string): string {
     .replace(/"/g, '\\"');
 }
 
-// Tool to send a WhatsApp message
+// Improved function to send WhatsApp messages with specified contact selection method
 server.tool(
   "send-whatsapp-message",
   "Send a message to a contact on WhatsApp",
@@ -66,53 +66,57 @@ server.tool(
     try {
       // Format the message for proper line breaks
       const formattedMessage = formatWhatsAppMessage(message);
-      
-      // AppleScript to interact with WhatsApp Desktop app
+
+      // Updated AppleScript with specific contact selection method (down arrow twice, then enter)
       const appleScript = `
         tell application "WhatsApp" to activate
-        delay 1.5
+        delay 4 -- Give WhatsApp time to fully activate
+        
         tell application "System Events"
           tell process "WhatsApp"
-            -- Click on the search field first to ensure focus
-            -- Use UI elements instead of keyboard shortcuts to avoid emoji panel
+            -- Access the search field
             try
-              -- First try to directly click on the search field if we can find it
-              click text field "Search or start new chat"
-            on error
-              -- If that fails, try clicking near the top of the window where search usually is
-              set frontWindow to front window
-              set winPosition to position of frontWindow
-              set winSize to size of frontWindow
+              -- Keyboard shortcut for search
+              keystroke "f" using {command down}
+              delay 2
               
-              -- Calculate a position likely to be the search field (top portion of window)
-              set searchX to (item 1 of winPosition) + (item 1 of winSize) / 2
-              set searchY to (item 2 of winPosition) + 40 -- Approximately where search is
-              
-              click at {searchX, searchY}
-              delay 0.3
               -- Clear any existing text
               keystroke "a" using {command down}
               keystroke (ASCII character 8) -- Backspace
+              delay 1.5
+              
+              -- Type the contact name
+              keystroke "${contactName.replace(/"/g, '\\"')}"
+              
+              -- Give time for search results to populate
+              delay 6
+              
+              -- SPECIFIC CONTACT SELECTION METHOD:
+              -- Tap down arrow twice and press enter
+              keystroke (ASCII character 31) -- first down arrow
+              delay 1
+              keystroke (ASCII character 31) -- second down arrow
+              delay 1
+              keystroke return -- press enter
+              delay 3
+              
+              -- By now, chat should be open. Type and send the message
+              keystroke "${formattedMessage}"
+              delay 2
+              
+              -- Send the message
+              keystroke return
+              delay 1
+              
+              return "Message sent using down arrow twice then enter method"
+            on error errMsg
+              return "Failed to send message: " & errMsg
             end try
-            
-            delay 0.5
-            -- Type the contact name
-            keystroke "${contactName.replace(/"/g, '\\"')}"
-            delay 1.5
-            
-            -- Press Enter to select the first contact from search results
-            key code 36
-            delay 1
-            
-            -- Type and send the message with proper line breaks
-            keystroke "${formattedMessage}"
-            delay 0.5
-            key code 36 -- Press Enter to send
           end tell
         end tell
       `;
 
-      await runAppleScript(appleScript);
+      const result = await runAppleScript(appleScript);
 
       return {
         content: [
@@ -127,7 +131,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: `Error sending message: ${(error as Error).message}`,
+            text: `Error sending message: ${error}`,
           }
         ],
         isError: true
@@ -136,7 +140,7 @@ server.tool(
   }
 );
 
-// Tool to check if WhatsApp is running
+// Tool to check if WhatsApp is currently running
 server.tool(
   "check-whatsapp-status",
   "Check if WhatsApp is currently running",
@@ -167,7 +171,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: `Error checking WhatsApp status: ${(error as Error).message}`,
+            text: `Error checking WhatsApp status: ${error}`,
           }
         ],
         isError: true
@@ -199,7 +203,7 @@ server.tool(
         content: [
           {
             type: "text",
-            text: `Error listing contacts: ${(error as Error).message}`,
+            text: `Error listing contacts: ${error}`,
           }
         ],
         isError: true

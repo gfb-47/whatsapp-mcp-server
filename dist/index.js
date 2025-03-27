@@ -35,37 +35,74 @@ async function runAppleScript(script) {
     }
     catch (error) {
         console.error("AppleScript execution error:", error);
-        throw new Error(`Failed to execute AppleScript: ${error.message}`);
+        throw new Error(`Failed to execute AppleScript: ${error}`);
     }
 }
-// Tool to send a WhatsApp message
+// Helper function to properly format messages for WhatsApp
+function formatWhatsAppMessage(message) {
+    // Replace normal line breaks with AppleScript line breaks
+    // This ensures proper line breaking in WhatsApp
+    return message
+        .replace(/\n/g, '" & return & "')
+        .replace(/"/g, '\\"');
+}
+// Improved function to send WhatsApp messages with specified contact selection method
 server.tool("send-whatsapp-message", "Send a message to a contact on WhatsApp", {
     contactName: z.string().describe("Full name of the contact as it appears in WhatsApp"),
     message: z.string().describe("Message content to send"),
 }, async ({ contactName, message }) => {
     try {
-        // AppleScript to interact with WhatsApp Desktop app
+        // Format the message for proper line breaks
+        const formattedMessage = formatWhatsAppMessage(message);
+        // Updated AppleScript with specific contact selection method (down arrow twice, then enter)
         const appleScript = `
         tell application "WhatsApp" to activate
-        delay 1
+        delay 4 -- Give WhatsApp time to fully activate
+        
         tell application "System Events"
           tell process "WhatsApp"
-            -- Search for the contact
-            keystroke "s" using {command down}
-            delay 0.5
-            keystroke "${contactName.replace(/"/g, '\\"')}"
-            delay 1
-            -- Press Enter to select the first contact from search results
-            key code 36
-            delay 1
-            -- Type and send the message
-            keystroke "${message.replace(/"/g, '\\"')}"
-            delay 0.5
-            key code 36 -- Press Enter to send
+            -- Access the search field
+            try
+              -- Keyboard shortcut for search
+              keystroke "f" using {command down}
+              delay 2
+              
+              -- Clear any existing text
+              keystroke "a" using {command down}
+              keystroke (ASCII character 8) -- Backspace
+              delay 1.5
+              
+              -- Type the contact name
+              keystroke "${contactName.replace(/"/g, '\\"')}"
+              
+              -- Give time for search results to populate
+              delay 6
+              
+              -- SPECIFIC CONTACT SELECTION METHOD:
+              -- Tap down arrow twice and press enter
+              keystroke (ASCII character 31) -- first down arrow
+              delay 1
+              keystroke (ASCII character 31) -- second down arrow
+              delay 1
+              keystroke return -- press enter
+              delay 3
+              
+              -- By now, chat should be open. Type and send the message
+              keystroke "${formattedMessage}"
+              delay 2
+              
+              -- Send the message
+              keystroke return
+              delay 1
+              
+              return "Message sent using down arrow twice then enter method"
+            on error errMsg
+              return "Failed to send message: " & errMsg
+            end try
           end tell
         end tell
       `;
-        await runAppleScript(appleScript);
+        const result = await runAppleScript(appleScript);
         return {
             content: [
                 {
@@ -80,14 +117,14 @@ server.tool("send-whatsapp-message", "Send a message to a contact on WhatsApp", 
             content: [
                 {
                     type: "text",
-                    text: `Error sending message: ${error.message}`,
+                    text: `Error sending message: ${error}`,
                 }
             ],
             isError: true
         };
     }
 });
-// Tool to check if WhatsApp is running
+// Tool to check if WhatsApp is currently running
 server.tool("check-whatsapp-status", "Check if WhatsApp is currently running", {}, async () => {
     try {
         const appleScript = `
@@ -113,7 +150,7 @@ server.tool("check-whatsapp-status", "Check if WhatsApp is currently running", {
             content: [
                 {
                     type: "text",
-                    text: `Error checking WhatsApp status: ${error.message}`,
+                    text: `Error checking WhatsApp status: ${error}`,
                 }
             ],
             isError: true
@@ -140,7 +177,7 @@ server.tool("list-recent-contacts", "List recently contacted people on WhatsApp 
             content: [
                 {
                     type: "text",
-                    text: `Error listing contacts: ${error.message}`,
+                    text: `Error listing contacts: ${error}`,
                 }
             ],
             isError: true
@@ -159,15 +196,6 @@ async function main() {
         transport.onclose = () => {
             console.error("Transport closed");
         };
-        // Log server info before connection, inspecting what properties are available
-        try {
-            console.error(`Server properties available: ${Object.keys(server).join(', ')}`);
-            console.error(`Server instance: ${server.constructor.name}`);
-            // Don't try to access properties that might not exist
-        }
-        catch (err) {
-            console.error("Could not log server info, but continuing");
-        }
         // Connect with additional error handling
         await server.connect(transport);
         console.error("WhatsApp MCP Server is running");
