@@ -54,7 +54,7 @@ function formatWhatsAppMessage(message: string) {
     .replace(/"/g, '\\"');
 }
 
-// Improved function to send WhatsApp messages with specified contact selection method
+// Improved function to send WhatsApp messages with minimal delays
 server.tool(
   "send-whatsapp-message",
   "Send a message to a contact on WhatsApp",
@@ -67,10 +67,10 @@ server.tool(
       // Format the message for proper line breaks
       const formattedMessage = formatWhatsAppMessage(message);
 
-      // Updated AppleScript with specific contact selection method (down arrow twice, then enter)
+      // Optimized AppleScript with minimal delays
       const appleScript = `
         tell application "WhatsApp" to activate
-        delay 4 -- Give WhatsApp time to fully activate
+        delay 1 -- Reduced from 4 to 1
         
         tell application "System Events"
           tell process "WhatsApp"
@@ -78,37 +78,36 @@ server.tool(
             try
               -- Keyboard shortcut for search
               keystroke "f" using {command down}
-              delay 2
+              delay 0.5 -- Reduced from 2 to 0.5
               
               -- Clear any existing text
               keystroke "a" using {command down}
               keystroke (ASCII character 8) -- Backspace
-              delay 1.5
+              delay 0.5 -- Reduced from 1.5 to 0.5
               
               -- Type the contact name
               keystroke "${contactName.replace(/"/g, '\\"')}"
               
               -- Give time for search results to populate
-              delay 6
+              delay 1.5 -- Reduced from 6 to 1.5
               
-              -- SPECIFIC CONTACT SELECTION METHOD:
-              -- Tap down arrow twice and press enter
+              -- Contact selection method
               keystroke (ASCII character 31) -- first down arrow
-              delay 1
+              delay 0.3 -- Reduced from 1 to 0.3
               keystroke (ASCII character 31) -- second down arrow
-              delay 1
+              delay 0.3 -- Reduced from 1 to 0.3
               keystroke return -- press enter
-              delay 3
+              delay 0.8 -- Reduced from 3 to 0.8
               
-              -- By now, chat should be open. Type and send the message
+              -- Type and send the message
               keystroke "${formattedMessage}"
-              delay 2
+              delay 0.5 -- Reduced from 2 to 0.5
               
               -- Send the message
               keystroke return
-              delay 1
+              delay 0.3 -- Reduced from 1 to 0.3
               
-              return "Message sent using down arrow twice then enter method"
+              return "Message sent using optimized timing"
             on error errMsg
               return "Failed to send message: " & errMsg
             end try
@@ -180,15 +179,13 @@ server.tool(
   }
 );
 
-// Tool to list recent WhatsApp contacts (this is a simplified version as full access may be limited)
+// Tool to list recent WhatsApp contacts (simplified version)
 server.tool(
   "list-recent-contacts",
   "List recently contacted people on WhatsApp (simplified)",
   {},
   async () => {
     try {
-      // This is a simulated result since direct access to WhatsApp's contact list
-      // through AppleScript is limited
       return {
         content: [
           {
@@ -217,7 +214,7 @@ async function main() {
   try {
     console.error("Starting WhatsApp MCP Server...");
 
-    // Create a more robust transport with error handling
+    // Create transport with error handling
     const transport = new StdioServerTransport();
 
     transport.onerror = (error) => {
@@ -228,7 +225,7 @@ async function main() {
       console.error("Transport closed");
     };
 
-    // Connect with additional error handling
+    // Connect with error handling
     await server.connect(transport);
 
     console.error("WhatsApp MCP Server is running");
@@ -244,21 +241,13 @@ async function main() {
 
   } catch (error) {
     logError("Error starting server", error);
-
-    // Give time for the error to be logged
-    setTimeout(() => {
-      process.exit(1);
-    }, 1000);
+    setTimeout(() => process.exit(1), 1000);
   }
 }
 
-// Add startup logging
+// Start the server
 console.error("Initializing WhatsApp MCP Server");
 main().catch(err => {
   logError("Fatal error in main", err);
-
-  // Give time for the error to be logged
-  setTimeout(() => {
-    process.exit(1);
-  }, 1000);
+  setTimeout(() => process.exit(1), 1000);
 });
