@@ -87,6 +87,7 @@ To enable Claude to use the WhatsApp MCP server, follow these steps:
     }
   ]
 }
+```
 
 3. **Define Tool Schemas**
    - Use the same schema definitions as in the MCP server code:
