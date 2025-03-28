@@ -11,12 +11,12 @@ Send text messages to specific contacts in your WhatsApp contact list:
 - Supports proper formatting of messages including line breaks
 - Uses AppleScript to automate the WhatsApp desktop interface
 
-### 2. Check WhatsApp Status
+### 2. Check WhatsApp Status (WIP)
 Verify if the WhatsApp application is currently running:
 - Returns the current running status of WhatsApp
 - Helps prevent errors when attempting to send messages
 
-### 3. List Recent Contacts (Limited)
+### 3. List Recent Contacts (WIP)
 Due to WhatsApp's privacy protections, this feature provides limited functionality:
 - Informs users about WhatsApp's privacy limitations
 - Requires exact contact names for messaging
@@ -89,21 +89,12 @@ To enable Claude to use the WhatsApp MCP server, follow these steps:
 }
 ```
 
-3. **Define Tool Schemas**
-   - Use the same schema definitions as in the MCP server code:
-     - `send-whatsapp-message`: Requires contactName and message parameters
-     - `check-whatsapp-status`: No parameters required
-     - `list-recent-contacts`: No parameters required
 
-4. **Test the Integration**
+3. **Test the Integration**
    - Create a test conversation with Claude
    - Ask Claude to send a WhatsApp message to a test contact
    - Verify that the message is sent successfully through the WhatsApp desktop app
 
-5. **Deploy for Production Use**
-   - Ensure your MCP server runs reliably
-   - Consider setting up an auto-start mechanism for the server
-   - Implement appropriate security measures for production usage
 
 ### MCP Tools Available
 
